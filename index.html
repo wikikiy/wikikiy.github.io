@@ -1,0 +1,1519 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, maximum-scale=5.0, minimum-scale=0.5, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#4f6ef7">
+  <title>轻量阅读 · 本地电子书</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --surface: #f8f9fa;
+      --text: #1e1e2f;
+      --text-secondary: #5f6368;
+      --border: #dadce0;
+      --primary: #4f6ef7;
+      --primary-light: #e8edff;
+      --danger: #e74c3c;
+      --danger-light: #fadbd8;
+      --shadow: 0 4px 12px rgba(0,0,0,0.05);
+      --sidebar-bg: #f3f4f6;
+      --chapter-hover: #e9e9f0;
+      --content-bg: #ffffff;
+      --card-bg: #ffffff;
+      --toggle-bg: #e0e0e0;
+      --toggle-thumb: #ffffff;
+      --pagination-btn: #f1f3f4;
+      --reading-text: #1e1e2f;
+      --theme-btn-bg: #f0f0f0;
+      --theme-btn-border: #d0d0d0;
+      --theme-btn-text: #333333;
+      --theme-btn-hover: #e0e0e0;
+      --theme-btn-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      --font-size: 16px;
+      --line-height: 1.7;
+      --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+      transition: background 0.25s ease, color 0.2s ease;
+    }
+
+    body.dark {
+      --bg: #1a1a2e;
+      --surface: #16213e;
+      --text: #e0e0e0;
+      --text-secondary: #a0a4b0;
+      --border: #2a2a4a;
+      --primary: #7b8cff;
+      --primary-light: #252545;
+      --danger: #e74c3c;
+      --danger-light: #3d2020;
+      --sidebar-bg: #0f0f21;
+      --chapter-hover: #2a2a44;
+      --content-bg: #1e1e32;
+      --card-bg: #222240;
+      --toggle-bg: #3a3a5a;
+      --toggle-thumb: #cfd0ff;
+      --pagination-btn: #2d2d4a;
+      --reading-text: #ffffff;
+      --theme-btn-bg: #2d2d4a;
+      --theme-btn-border: #4a4a6a;
+      --theme-btn-text: #e0e0e0;
+      --theme-btn-hover: #3a3a5a;
+      --theme-btn-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    /* 允许文本选择 */
+    .reading-area, .reading-area * {
+      -webkit-user-select: text;
+      user-select: text;
+    }
+
+    html {
+      font-size: 16px;
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      height: -webkit-fill-available;
+      width: 100vw;
+      display: flex;
+      flex-direction: column;
+      transition: background 0.25s, color 0.2s;
+      overflow: hidden;
+      min-width: 320px;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+    }
+
+    /* 顶部导航栏 - H5优化 */
+    .navbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 1rem;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      z-index: 10;
+      height: 3.5rem;
+      min-height: 3.5rem;
+      flex-shrink: 0;
+      position: relative;
+      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px);
+    }
+
+    .logo {
+      font-weight: 600;
+      font-size: 1.1rem;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      white-space: nowrap;
+    }
+    
+    .logo span:first-child {
+      font-size: 1.3rem;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: nowrap;
+    }
+
+    /* 按钮通用样式 - H5触摸优化 */
+    .btn {
+      padding: 0.4rem 0.8rem;
+      border-radius: 1.5rem;
+      font-weight: 500;
+      font-size: 0.8rem;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      height: 2.2rem;
+      letter-spacing: 0.3px;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      min-width: 44px;
+      justify-content: center;
+    }
+
+    /* 上传按钮 */
+    .upload-btn {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 2px 6px rgba(79,110,247,0.3);
+    }
+    .upload-btn:active {
+      background: #3b5de7;
+      transform: scale(0.95);
+    }
+
+    /* 清除按钮 */
+    .clear-btn {
+      background: var(--danger-light);
+      color: var(--danger);
+      border: 2px solid var(--danger);
+      box-shadow: 0 2px 6px rgba(231,76,60,0.2);
+      font-weight: 600;
+    }
+    .clear-btn:active {
+      background: var(--danger);
+      color: white;
+      transform: scale(0.95);
+    }
+    .clear-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      background: var(--danger-light);
+      color: var(--danger);
+    }
+
+    /* 主题切换按钮 */
+    .theme-toggle-btn {
+      background: var(--theme-btn-bg);
+      border: 2px solid var(--theme-btn-border);
+      border-radius: 1.5rem;
+      padding: 0.4rem 0.8rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--theme-btn-text);
+      transition: all 0.3s ease;
+      box-shadow: var(--theme-btn-shadow);
+      height: 2.2rem;
+      white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .theme-toggle-btn:active {
+      transform: scale(0.95);
+    }
+
+    .theme-toggle-btn .icon {
+      font-size: 1.1rem;
+      transition: transform 0.3s ease;
+    }
+
+    /* 当前书籍信息栏 */
+    .book-info-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.4rem 1rem;
+      background: var(--primary-light);
+      border-bottom: 1px solid var(--border);
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+      min-height: 2rem;
+    }
+
+    .book-info-bar .book-name {
+      font-weight: 500;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 50%;
+    }
+
+    .book-info-bar .book-type {
+      background: var(--primary);
+      color: white;
+      padding: 0.15rem 0.5rem;
+      border-radius: 1rem;
+      font-size: 0.65rem;
+      font-weight: 500;
+      text-transform: uppercase;
+    }
+
+    /* 键盘提示标签 */
+    .keyboard-hint {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.7rem;
+      opacity: 0.8;
+      white-space: nowrap;
+    }
+
+    .keyboard-hint .key-icon {
+      background: var(--pagination-btn);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 0.1rem 0.3rem;
+      font-family: monospace;
+      font-size: 0.65rem;
+      font-weight: 600;
+    }
+
+    /* 主体布局 - H5侧边栏改为抽屉式 */
+    .reader-container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      background: var(--bg);
+      width: 100%;
+      position: relative;
+    }
+
+    /* 移动端章节抽屉 */
+    .sidebar-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 100;
+      display: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .sidebar-overlay.active {
+      display: block;
+    }
+
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: -280px;
+      width: 280px;
+      max-width: 80vw;
+      height: 100%;
+      background: var(--sidebar-bg);
+      border-right: 2px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      transition: left 0.3s ease;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 1rem 0.5rem;
+      z-index: 101;
+      box-shadow: 2px 0 12px rgba(0,0,0,0.1);
+    }
+
+    .sidebar.active {
+      left: 0;
+    }
+
+    .sidebar-header {
+      font-weight: 600;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-secondary);
+      padding: 0.5rem 1rem 0.8rem 1rem;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 0.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .close-sidebar-btn {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--text);
+      padding: 0.2rem 0.5rem;
+      border-radius: 0.5rem;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .close-sidebar-btn:active {
+      background: var(--chapter-hover);
+    }
+
+    .chapter-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding-bottom: 3rem;
+    }
+
+    .chapter-item {
+      padding: 0.7rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.15s ease;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      word-break: break-word;
+      border-left: 3px solid transparent;
+      -webkit-tap-highlight-color: transparent;
+      min-height: 44px;
+    }
+    .chapter-item:active {
+      background: var(--chapter-hover);
+    }
+    .chapter-item.active {
+      background: var(--primary-light);
+      color: var(--primary);
+      font-weight: 500;
+      border-left-color: var(--primary);
+    }
+
+    /* 右侧内容区域 */
+    .content-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--content-bg);
+      overflow: hidden;
+      min-width: 0;
+      position: relative;
+    }
+
+    /* 移动端目录按钮 */
+    .mobile-toc-btn {
+      position: fixed;
+      right: 1rem;
+      bottom: 5rem;
+      width: 3rem;
+      height: 3rem;
+      border-radius: 50%;
+      background: var(--primary);
+      color: white;
+      border: none;
+      box-shadow: 0 4px 12px rgba(79,110,247,0.4);
+      font-size: 1.3rem;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 50;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      transition: all 0.2s ease;
+    }
+
+    .mobile-toc-btn:active {
+      transform: scale(0.9);
+      background: #3b5de7;
+    }
+
+    .reading-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem 1rem;
+      font-size: 1rem;
+      line-height: 1.8;
+      word-wrap: break-word;
+      max-width: 100%;
+      margin: 0 auto;
+      width: 100%;
+      color: var(--reading-text);
+      background: var(--content-bg);
+      -webkit-overflow-scrolling: touch;
+      overflow-scrolling: touch;
+      -webkit-transform: translateZ(0);
+      transform: translateZ(0);
+    }
+
+    .reading-area * {
+      color: var(--reading-text) !important;
+    }
+
+    .pdf-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0.5rem;
+      width: 100%;
+    }
+    
+    .pdf-canvas {
+      max-width: 100%;
+      height: auto;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      margin-bottom: 0.5rem;
+      background: white;
+    }
+
+    /* 翻页控制 - H5底部固定 */
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.8rem;
+      padding: 0.6rem 1rem;
+      padding-bottom: calc(0.6rem + var(--safe-area-bottom));
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      font-size: 0.8rem;
+      flex-shrink: 0;
+      flex-wrap: nowrap;
+      position: relative;
+      z-index: 5;
+    }
+    
+    .page-btn {
+      background: var(--pagination-btn);
+      border: 1px solid var(--border);
+      border-radius: 1.5rem;
+      padding: 0.5rem 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      color: var(--text);
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.8rem;
+      height: 2.2rem;
+      white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      min-width: 44px;
+      justify-content: center;
+    }
+    .page-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .page-btn:active:not(:disabled) {
+      background: var(--primary-light);
+      border-color: var(--primary);
+      transform: scale(0.95);
+    }
+    
+    .page-info {
+      font-weight: 600;
+      color: var(--text-secondary);
+      min-width: 60px;
+      text-align: center;
+      font-size: 0.8rem;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .upload-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--text-secondary);
+      gap: 1rem;
+      text-align: center;
+      padding: 1rem;
+    }
+
+    #fileInput {
+      display: none;
+    }
+
+    /* 触摸滚动优化 */
+    .reading-area, .sidebar, .chapter-list {
+      -webkit-overflow-scrolling: touch;
+      overflow-scrolling: touch;
+      scroll-behavior: smooth;
+    }
+
+    /* 模态对话框H5优化 */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      -webkit-backdrop-filter: blur(4px);
+      backdrop-filter: blur(4px);
+      padding: 1rem;
+    }
+
+    .modal-dialog {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      max-width: 320px;
+      width: 90%;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+
+    .modal-dialog h3 {
+      font-size: 1.1rem;
+      margin-bottom: 0.8rem;
+      color: var(--text);
+    }
+
+    .modal-dialog p {
+      color: var(--text-secondary);
+      margin-bottom: 1.2rem;
+      line-height: 1.5;
+      font-size: 0.9rem;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 0.8rem;
+      justify-content: flex-end;
+    }
+
+    .modal-btn {
+      padding: 0.5rem 1rem;
+      border-radius: 1.5rem;
+      border: 1px solid var(--border);
+      background: var(--pagination-btn);
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+      font-size: 0.85rem;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      min-width: 44px;
+    }
+
+    .modal-btn.danger {
+      background: var(--danger);
+      color: white;
+      border-color: var(--danger);
+    }
+
+    .modal-btn:active {
+      transform: scale(0.95);
+    }
+
+    .modal-btn.danger:active {
+      background: #c0392b;
+    }
+
+    /* 响应式设计 */
+    /* 桌面端显示侧边栏 */
+    @media (min-width: 769px) {
+      .sidebar {
+        position: relative;
+        left: 0;
+        width: 260px;
+        max-width: 300px;
+        height: auto;
+        box-shadow: none;
+        border-right: 2px solid var(--border);
+      }
+      
+      .sidebar-overlay {
+        display: none !important;
+      }
+      
+      .close-sidebar-btn {
+        display: none;
+      }
+      
+      .mobile-toc-btn {
+        display: none !important;
+      }
+      
+      .reading-area {
+        padding: 2rem 2.5rem;
+      }
+      
+      .btn {
+        padding: 0.5rem 1.2rem;
+        font-size: 0.9rem;
+        height: 2.5rem;
+      }
+      
+      .theme-toggle-btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+        height: 2.5rem;
+      }
+    }
+
+    /* 平板竖屏 */
+    @media (min-width: 481px) and (max-width: 768px) {
+      .sidebar {
+        width: 300px;
+        left: -300px;
+      }
+      
+      .mobile-toc-btn {
+        display: flex;
+      }
+      
+      .reading-area {
+        padding: 1.5rem;
+        font-size: 1.05rem;
+      }
+    }
+
+    /* 手机端 */
+    @media (max-width: 480px) {
+      .navbar {
+        height: 3rem;
+        padding: 0.3rem 0.8rem;
+      }
+      
+      .logo {
+        font-size: 1rem;
+      }
+      
+      .btn {
+        padding: 0.3rem 0.6rem;
+        font-size: 0.75rem;
+        height: 2rem;
+      }
+      
+      .theme-toggle-btn {
+        padding: 0.3rem 0.6rem;
+        font-size: 0.75rem;
+        height: 2rem;
+      }
+      
+      .mobile-toc-btn {
+        display: flex;
+        width: 2.8rem;
+        height: 2.8rem;
+        right: 0.8rem;
+        bottom: 4.5rem;
+      }
+      
+      .reading-area {
+        padding: 0.8rem;
+        font-size: 0.95rem;
+        line-height: 1.7;
+      }
+      
+      .pagination {
+        padding: 0.5rem 0.8rem;
+        gap: 0.5rem;
+      }
+      
+      .page-btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.75rem;
+        height: 2rem;
+      }
+      
+      .sidebar {
+        width: 260px;
+        left: -260px;
+      }
+    }
+
+    /* 小屏手机 */
+    @media (max-width: 360px) {
+      .actions {
+        gap: 0.3rem;
+      }
+      
+      .btn {
+        padding: 0.3rem 0.5rem;
+        font-size: 0.7rem;
+        height: 1.8rem;
+      }
+      
+      .theme-toggle-btn {
+        padding: 0.3rem 0.5rem;
+        font-size: 0.7rem;
+        height: 1.8rem;
+      }
+      
+      .theme-text {
+        display: none;
+      }
+    }
+
+    /* 触摸设备优化 */
+    @media (hover: none) and (pointer: coarse) {
+      .btn:hover,
+      .theme-toggle-btn:hover,
+      .page-btn:hover,
+      .chapter-item:hover {
+        transform: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="navbar">
+    <div class="logo">
+      <span>📖</span>
+      <span>轻量阅读</span>
+    </div>
+    <div class="actions">
+      <button class="btn upload-btn" id="uploadTriggerBtn">
+        <span>📂</span>
+        <span class="btn-text">打开</span>
+      </button>
+      <button class="btn clear-btn" id="clearBookBtn" disabled>
+        <span>🗑️</span>
+        <span class="btn-text">清除</span>
+      </button>
+      <button class="theme-toggle-btn" id="themeToggleBtn" aria-label="切换深色/浅色模式">
+        <span class="icon" id="themeIcon">🌙</span>
+        <span class="theme-text" id="themeText">深色</span>
+      </button>
+    </div>
+    <input type="file" id="fileInput" accept=".txt,.epub,.pdf">
+  </header>
+
+  <!-- 当前书籍信息栏 -->
+  <div class="book-info-bar hidden" id="bookInfoBar">
+    <div class="book-name">
+      <span>📚</span>
+      <span id="currentBookName">未加载</span>
+      <span class="book-type" id="currentBookType">-</span>
+    </div>
+    <div class="keyboard-hint">
+      <span class="key-icon">←</span>
+      <span class="key-icon">→</span>
+      <span>键盘翻页</span>
+    </div>
+  </div>
+
+  <!-- 移动端目录抽屉遮罩 -->
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="reader-container">
+    <!-- 左侧章节列表（移动端为抽屉式） -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <span>📑 目录</span>
+        <button class="close-sidebar-btn" id="closeSidebarBtn">✕</button>
+      </div>
+      <ul class="chapter-list" id="chapterList">
+        <li class="chapter-item" style="justify-content:center; color: var(--text-secondary);">暂无书籍</li>
+      </ul>
+    </aside>
+
+    <!-- 移动端目录按钮 -->
+    <button class="mobile-toc-btn" id="mobileTocBtn" aria-label="打开目录">
+      📋
+    </button>
+
+    <!-- 右侧阅读主面板 -->
+    <main class="content-panel" id="contentPanel">
+      <div class="reading-area" id="readingArea">
+        <div class="upload-area">
+          <span style="font-size: 3rem;">📘</span>
+          <p>点击上方「打开」选择电子书</p>
+          <p style="font-size: 0.8rem; opacity:0.7;">支持 TXT · EPUB · PDF</p>
+        </div>
+      </div>
+      <div class="pagination" id="paginationControls">
+        <button class="page-btn" id="prevPageBtn" disabled>
+          <span>←</span> 上一页
+        </button>
+        <span class="page-info" id="pageIndicator">—</span>
+        <button class="page-btn" id="nextPageBtn" disabled>
+          下一页 <span>→</span>
+        </button>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    (function() {
+      const fileInput = document.getElementById('fileInput');
+      const uploadTrigger = document.getElementById('uploadTriggerBtn');
+      const clearBookBtn = document.getElementById('clearBookBtn');
+      const themeToggleBtn = document.getElementById('themeToggleBtn');
+      const themeIcon = document.getElementById('themeIcon');
+      const themeText = document.getElementById('themeText');
+      const chapterList = document.getElementById('chapterList');
+      const readingArea = document.getElementById('readingArea');
+      const prevBtn = document.getElementById('prevPageBtn');
+      const nextBtn = document.getElementById('nextPageBtn');
+      const pageIndicator = document.getElementById('pageIndicator');
+      const bookInfoBar = document.getElementById('bookInfoBar');
+      const currentBookName = document.getElementById('currentBookName');
+      const currentBookTypeDisplay = document.getElementById('currentBookType');
+      const sidebar = document.getElementById('sidebar');
+      const sidebarOverlay = document.getElementById('sidebarOverlay');
+      const closeSidebarBtn = document.getElementById('closeSidebarBtn');
+      const mobileTocBtn = document.getElementById('mobileTocBtn');
+
+      let currentBookType = null;
+      let currentFile = null;
+      
+      let txtParagraphs = [];
+      let txtCurrentPage = 0;
+      const TXT_ITEMS_PER_PAGE = 20;
+      
+      let epubBook = null;
+      let epubRendition = null;
+      let epubChapters = [];
+      let currentEpubChapterIndex = 0;
+      
+      let pdfDoc = null;
+      let pdfCurrentPage = 1;
+      let pdfTotalPages = 0;
+      let pdfScale = 1.5;
+
+      // 检测是否为移动设备
+      function isMobile() {
+        return window.innerWidth <= 768;
+      }
+
+      // 打开侧边栏
+      function openSidebar() {
+        sidebar.classList.add('active');
+        sidebarOverlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+      }
+
+      // 关闭侧边栏
+      function closeSidebar() {
+        sidebar.classList.remove('active');
+        sidebarOverlay.classList.remove('active');
+        document.body.style.overflow = '';
+      }
+
+      // 移动端目录按钮事件
+      mobileTocBtn.addEventListener('click', openSidebar);
+      closeSidebarBtn.addEventListener('click', closeSidebar);
+      sidebarOverlay.addEventListener('click', closeSidebar);
+
+      // 点击章节后自动关闭侧边栏（移动端）
+      chapterList.addEventListener('click', (e) => {
+        if (e.target.classList.contains('chapter-item') && isMobile()) {
+          setTimeout(closeSidebar, 200);
+        }
+      });
+
+      // 更新主题按钮的显示
+      function updateThemeButton() {
+        const isDark = document.body.classList.contains('dark');
+        if (isDark) {
+          themeIcon.textContent = '☀️';
+          themeText.textContent = '浅色';
+        } else {
+          themeIcon.textContent = '🌙';
+          themeText.textContent = '深色';
+        }
+        
+        if (epubRendition && currentBookType === 'epub') {
+          const bgColor = isDark ? '#1e1e32' : '#ffffff';
+          const textColor = isDark ? '#ffffff' : '#1e1e2f';
+          epubRendition.themes.register('custom-theme', {
+            body: {
+              background: bgColor,
+              color: textColor
+            },
+            '*': {
+              color: textColor
+            }
+          });
+          epubRendition.themes.select('custom-theme');
+        }
+      }
+      
+      // 更新书籍信息栏
+      function updateBookInfoBar() {
+        if (currentFile) {
+          bookInfoBar.classList.remove('hidden');
+          currentBookName.textContent = currentFile.name;
+          currentBookTypeDisplay.textContent = currentBookType?.toUpperCase() || '-';
+          clearBookBtn.disabled = false;
+        } else {
+          bookInfoBar.classList.add('hidden');
+          clearBookBtn.disabled = true;
+        }
+      }
+
+      // 显示清除确认对话框
+      function showClearConfirmDialog() {
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.innerHTML = `
+          <div class="modal-dialog">
+            <h3>🗑️ 确认清除</h3>
+            <p>确定要清除当前电子书吗？<br>所有本地缓存将被清空。</p>
+            <div class="modal-actions">
+              <button class="modal-btn" id="cancelClearBtn">取消</button>
+              <button class="modal-btn danger" id="confirmClearBtn">清除</button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+
+        const cancelBtn = overlay.querySelector('#cancelClearBtn');
+        const confirmBtn = overlay.querySelector('#confirmClearBtn');
+
+        function closeModal() {
+          overlay.remove();
+        }
+
+        cancelBtn.addEventListener('click', closeModal);
+        confirmBtn.addEventListener('click', () => {
+          clearBook();
+          closeModal();
+        });
+        
+        overlay.addEventListener('click', (e) => {
+          if (e.target === overlay) closeModal();
+        });
+
+        const escHandler = (e) => {
+          if (e.key === 'Escape') {
+            closeModal();
+            document.removeEventListener('keydown', escHandler);
+          }
+        };
+        document.addEventListener('keydown', escHandler);
+      }
+
+      // 清除书籍
+      function clearBook() {
+        if (epubRendition) {
+          try { 
+            epubRendition.destroy(); 
+          } catch(e) {
+            console.warn('EPUB 渲染器清理失败', e);
+          }
+          epubRendition = null;
+        }
+        
+        epubBook = null;
+        epubChapters = [];
+        currentEpubChapterIndex = 0;
+        
+        pdfDoc = null;
+        pdfCurrentPage = 1;
+        pdfTotalPages = 0;
+        
+        txtParagraphs = [];
+        txtCurrentPage = 0;
+        
+        currentBookType = null;
+        currentFile = null;
+        
+        readingArea.innerHTML = `
+          <div class="upload-area">
+            <span style="font-size: 3rem;">📘</span>
+            <p>点击上方「打开」选择电子书</p>
+            <p style="font-size: 0.8rem; opacity:0.7;">支持 TXT · EPUB · PDF</p>
+          </div>
+        `;
+        
+        chapterList.innerHTML = '<li class="chapter-item" style="justify-content:center; color: var(--text-secondary);">暂无书籍</li>';
+        
+        updatePaginationButtons('none');
+        updateBookInfoBar();
+        
+        fileInput.value = '';
+        
+        if (isMobile()) {
+          closeSidebar();
+        }
+        
+        console.log('✅ 书籍已清除');
+      }
+      
+      // 主题切换事件
+      themeToggleBtn.addEventListener('click', () => {
+        document.body.classList.toggle('dark');
+        updateThemeButton();
+        
+        if (currentBookType === 'txt') {
+          renderTxtPage();
+        } else if (currentBookType === 'pdf' && pdfDoc) {
+          renderPdfPage(pdfCurrentPage);
+        }
+        
+        themeToggleBtn.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+          themeToggleBtn.style.transform = '';
+        }, 150);
+      });
+      
+      // 清除按钮事件
+      clearBookBtn.addEventListener('click', () => {
+        if (currentFile) {
+          showClearConfirmDialog();
+        }
+      });
+      
+      // 初始化
+      updateThemeButton();
+      updateBookInfoBar();
+
+      function resetReader() {
+        readingArea.innerHTML = '';
+        chapterList.innerHTML = '<li class="chapter-item" style="justify-content:center; color: var(--text-secondary);">暂无书籍</li>';
+        txtParagraphs = [];
+        txtCurrentPage = 0;
+        if (epubRendition) {
+          try { epubRendition.destroy(); } catch(e){}
+          epubRendition = null;
+        }
+        epubBook = null;
+        epubChapters = [];
+        currentEpubChapterIndex = 0;
+        pdfDoc = null;
+        pdfCurrentPage = 1;
+        pdfTotalPages = 0;
+        currentBookType = null;
+        updatePaginationButtons('none');
+      }
+
+      function updatePaginationButtons(type, extra={}) {
+        if (type === 'txt') {
+          const totalPages = Math.ceil(txtParagraphs.length / TXT_ITEMS_PER_PAGE) || 1;
+          prevBtn.disabled = txtCurrentPage <= 0;
+          nextBtn.disabled = txtCurrentPage >= totalPages - 1;
+          pageIndicator.textContent = `${txtCurrentPage + 1} / ${totalPages}`;
+        } else if (type === 'pdf') {
+          prevBtn.disabled = pdfCurrentPage <= 1;
+          nextBtn.disabled = pdfCurrentPage >= pdfTotalPages;
+          pageIndicator.textContent = `${pdfCurrentPage} / ${pdfTotalPages}`;
+        } else if (type === 'epub') {
+          prevBtn.disabled = currentEpubChapterIndex <= 0;
+          nextBtn.disabled = currentEpubChapterIndex >= epubChapters.length - 1;
+          const chapName = epubChapters[currentEpubChapterIndex]?.label || '章节';
+          pageIndicator.textContent = `${currentEpubChapterIndex+1}/${epubChapters.length}`;
+        } else {
+          prevBtn.disabled = true;
+          nextBtn.disabled = true;
+          pageIndicator.textContent = '—';
+        }
+      }
+
+      function showEmptyMessage(text) {
+        readingArea.innerHTML = `<div class="upload-area"><span style="font-size:2.5rem;">📭</span><p>${text}</p></div>`;
+      }
+
+      function renderChapterList(chapters, type) {
+        chapterList.innerHTML = '';
+        if (!chapters || chapters.length === 0) {
+          chapterList.innerHTML = '<li class="chapter-item" style="justify-content:center; color: var(--text-secondary);">无章节</li>';
+          return;
+        }
+
+        chapters.forEach((chap, index) => {
+          const li = document.createElement('li');
+          li.className = 'chapter-item';
+          li.textContent = chap.label || chap.title || `章节 ${index+1}`;
+          li.dataset.index = index;
+          li.addEventListener('click', () => {
+            document.querySelectorAll('.chapter-item').forEach(el => el.classList.remove('active'));
+            li.classList.add('active');
+            
+            if (type === 'epub' && epubRendition && epubBook) {
+              const href = chap.href || chap.idref;
+              if (href) {
+                epubRendition.display(href).then(() => {
+                  currentEpubChapterIndex = index;
+                  updatePaginationButtons('epub');
+                }).catch(err => console.warn('跳转章节失败', err));
+              }
+            } else if (type === 'txt') {
+              if (chap.startIndex !== undefined) {
+                txtCurrentPage = Math.floor(chap.startIndex / TXT_ITEMS_PER_PAGE);
+                renderTxtPage();
+                updatePaginationButtons('txt');
+              }
+            } else if (type === 'pdf') {
+              if (chap.pageNumber) {
+                pdfCurrentPage = chap.pageNumber;
+                renderPdfPage(pdfCurrentPage);
+                updatePaginationButtons('pdf');
+              }
+            }
+          });
+          chapterList.appendChild(li);
+        });
+
+        if (chapters.length > 0 && chapterList.firstChild) {
+          chapterList.firstChild.classList.add('active');
+        }
+      }
+
+      function processTxt(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const text = e.target.result;
+          txtParagraphs = text.split(/\r?\n/).filter(line => line.trim() !== '');
+          if (txtParagraphs.length === 0) {
+            showEmptyMessage('文件内容为空');
+            return;
+          }
+          const chapters = [];
+          const chunkSize = isMobile() ? 150 : 200;
+          for (let i = 0; i < txtParagraphs.length; i += chunkSize) {
+            const start = i;
+            const label = txtParagraphs[i].substring(0, 20) + '…';
+            chapters.push({ label: label || `段落${i+1}`, startIndex: i });
+          }
+          renderChapterList(chapters, 'txt');
+          txtCurrentPage = 0;
+          renderTxtPage();
+          updatePaginationButtons('txt');
+        };
+        reader.readAsText(file, 'UTF-8');
+      }
+
+      function renderTxtPage() {
+        const start = txtCurrentPage * TXT_ITEMS_PER_PAGE;
+        const end = Math.min(start + TXT_ITEMS_PER_PAGE, txtParagraphs.length);
+        const pageParagraphs = txtParagraphs.slice(start, end);
+        readingArea.innerHTML = pageParagraphs.map(p => `<p style="margin-bottom:1rem;">${escapeHtml(p)}</p>`).join('');
+        readingArea.scrollTop = 0;
+      }
+
+      function escapeHtml(text) {
+        return String(text)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+
+      async function processEpub(file) {
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          const book = ePub(arrayBuffer);
+          epubBook = book;
+          
+          const navigation = await book.loaded.navigation;
+          const spine = book.spine;
+          
+          epubChapters = [];
+          if (navigation && navigation.toc) {
+            navigation.toc.forEach(item => {
+              epubChapters.push({
+                label: item.label,
+                href: item.href,
+                idref: item.id || ''
+              });
+            });
+          }
+          
+          if (epubChapters.length === 0 && spine && spine.items) {
+            spine.items.forEach((item, idx) => {
+              epubChapters.push({
+                label: `章节 ${idx+1}`,
+                href: item.href,
+                idref: item.idref
+              });
+            });
+          }
+          
+          renderChapterList(epubChapters, 'epub');
+          
+          const rendition = book.renderTo(readingArea, {
+            width: '100%',
+            height: '100%',
+            spread: 'none',
+            flow: 'paginated',
+            manager: 'default'
+          });
+          epubRendition = rendition;
+          
+          updateThemeButton();
+          
+          if (epubChapters.length > 0) {
+            const firstHref = epubChapters[0].href;
+            await rendition.display(firstHref);
+            currentEpubChapterIndex = 0;
+          } else {
+            await rendition.display();
+          }
+          
+          rendition.on('relocated', (location) => {
+            if (!location || !location.start) return;
+            const currentHref = location.start.href;
+            const index = epubChapters.findIndex(ch => ch.href === currentHref || currentHref.includes(ch.href));
+            if (index !== -1 && index !== currentEpubChapterIndex) {
+              currentEpubChapterIndex = index;
+              updatePaginationButtons('epub');
+              document.querySelectorAll('.chapter-item').forEach((el, i) => {
+                el.classList.toggle('active', i === index);
+              });
+            }
+          });
+          
+          updatePaginationButtons('epub');
+          
+        } catch (error) {
+          console.error('EPUB解析错误', error);
+          showEmptyMessage('EPUB 解析失败');
+        }
+      }
+
+      async function processPdf(file) {
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+          pdfDoc = await loadingTask.promise;
+          pdfTotalPages = pdfDoc.numPages;
+          pdfCurrentPage = 1;
+          
+          if (isMobile()) {
+            pdfScale = 1.2;
+          }
+          
+          const chapters = [];
+          for (let i=1; i<=pdfTotalPages; i++) {
+            chapters.push({label: `第 ${i} 页`, pageNumber: i});
+          }
+          
+          renderChapterList(chapters, 'pdf');
+          renderPdfPage(pdfCurrentPage);
+          updatePaginationButtons('pdf');
+        } catch (err) {
+          console.error('PDF加载失败', err);
+          showEmptyMessage('PDF 加载错误');
+        }
+      }
+
+      async function renderPdfPage(pageNum) {
+        if (!pdfDoc) return;
+        readingArea.innerHTML = ''; 
+        const page = await pdfDoc.getPage(pageNum);
+        const viewport = page.getViewport({ scale: pdfScale });
+        
+        const canvas = document.createElement('canvas');
+        canvas.className = 'pdf-canvas';
+        const context = canvas.getContext('2d');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        
+        await page.render({ canvasContext: context, viewport: viewport }).promise;
+        const container = document.createElement('div');
+        container.className = 'pdf-container';
+        container.appendChild(canvas);
+        readingArea.appendChild(container);
+        readingArea.scrollTop = 0;
+      }
+
+      function handleFileSelect(file) {
+        if (!file) return;
+        resetReader();
+        currentFile = file;
+        const fileName = file.name.toLowerCase();
+        
+        if (fileName.endsWith('.txt')) {
+          currentBookType = 'txt';
+          processTxt(file);
+        } else if (fileName.endsWith('.epub')) {
+          currentBookType = 'epub';
+          processEpub(file);
+        } else if (fileName.endsWith('.pdf')) {
+          currentBookType = 'pdf';
+          processPdf(file);
+        } else {
+          alert('不支持的文件格式');
+          resetReader();
+          return;
+        }
+        
+        updateBookInfoBar();
+      }
+
+      uploadTrigger.addEventListener('click', () => fileInput.click());
+      
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) handleFileSelect(file);
+        fileInput.value = '';
+      });
+
+      // 翻页按钮
+      prevBtn.addEventListener('click', () => {
+        if (currentBookType === 'txt' && txtParagraphs.length) {
+          if (txtCurrentPage > 0) {
+            txtCurrentPage--;
+            renderTxtPage();
+            updatePaginationButtons('txt');
+          }
+        } else if (currentBookType === 'pdf' && pdfDoc) {
+          if (pdfCurrentPage > 1) {
+            pdfCurrentPage--;
+            renderPdfPage(pdfCurrentPage);
+            updatePaginationButtons('pdf');
+          }
+        } else if (currentBookType === 'epub' && epubRendition) {
+          epubRendition.prev();
+        }
+      });
+
+      nextBtn.addEventListener('click', () => {
+        if (currentBookType === 'txt' && txtParagraphs.length) {
+          const totalPages = Math.ceil(txtParagraphs.length / TXT_ITEMS_PER_PAGE);
+          if (txtCurrentPage < totalPages - 1) {
+            txtCurrentPage++;
+            renderTxtPage();
+            updatePaginationButtons('txt');
+          }
+        } else if (currentBookType === 'pdf' && pdfDoc) {
+          if (pdfCurrentPage < pdfTotalPages) {
+            pdfCurrentPage++;
+            renderPdfPage(pdfCurrentPage);
+            updatePaginationButtons('pdf');
+          }
+        } else if (currentBookType === 'epub' && epubRendition) {
+          epubRendition.next();
+        }
+      });
+
+      // 键盘快捷键
+      document.addEventListener('keydown', (e) => {
+        // 如果正在输入框中，不触发快捷键
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+          return;
+        }
+
+        switch(e.key) {
+          case 'ArrowLeft':
+          case 'ArrowUp':
+            e.preventDefault();
+            if (!prevBtn.disabled) {
+              prevBtn.click();
+              prevBtn.style.transform = 'scale(0.95)';
+              setTimeout(() => {
+                prevBtn.style.transform = '';
+              }, 150);
+            }
+            break;
+            
+          case 'ArrowRight':
+          case 'ArrowDown':
+            e.preventDefault();
+            if (!nextBtn.disabled) {
+              nextBtn.click();
+              nextBtn.style.transform = 'scale(0.95)';
+              setTimeout(() => {
+                nextBtn.style.transform = '';
+              }, 150);
+            }
+            break;
+            
+          case 'Delete':
+            if (e.ctrlKey && currentFile) {
+              e.preventDefault();
+              showClearConfirmDialog();
+            }
+            break;
+            
+          case 'Escape':
+            if (isMobile()) {
+              closeSidebar();
+            }
+            break;
+        }
+      });
+
+      // 触摸滑动翻页
+      let touchStartX = 0;
+      let touchStartY = 0;
+      
+      readingArea.addEventListener('touchstart', (e) => {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+      }, { passive: true });
+
+      readingArea.addEventListener('touchend', (e) => {
+        if (!currentFile) return;
+        
+        const touchEndX = e.changedTouches[0].clientX;
+        const touchEndY = e.changedTouches[0].clientY;
+        const deltaX = touchEndX - touchStartX;
+        const deltaY = touchEndY - touchStartY;
+        
+        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+          if (deltaX > 0) {
+            prevBtn.click();
+          } else {
+            nextBtn.click();
+          }
+        }
+      });
+
+      // 拖拽上传
+      document.body.addEventListener('dragover', (e) => e.preventDefault());
+      document.body.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const file = e.dataTransfer.files[0];
+        if (file) handleFileSelect(file);
+      });
+
+      // 窗口大小改变
+      let resizeTimeout;
+      window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+          if (currentBookType === 'pdf' && pdfDoc) {
+            if (isMobile()) {
+              pdfScale = 1.2;
+            } else {
+              pdfScale = 1.5;
+            }
+            renderPdfPage(pdfCurrentPage);
+          }
+          
+          if (!isMobile()) {
+            sidebar.classList.remove('active');
+            sidebarOverlay.classList.remove('active');
+            document.body.style.overflow = '';
+          }
+        }, 300);
+      });
+
+      // 初始检查移动端
+      if (isMobile()) {
+        mobileTocBtn.style.display = 'flex';
+      }
+
+      updateBookInfoBar();
+    })();
+  </script>
+</body>
+</html>
