@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>极简本地电子书阅读器 Pro</title>
+    <title>全格式本地电子书阅读器</title>
     
     <script src="https://cdn.jsdelivr.net/npm/jszip/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
@@ -55,9 +55,13 @@
         .controls { display: flex; gap: 10px; }
 
         button, .file-label {
-            padding: 8px 16px; border: none; border-radius: 6px;
-            cursor: pointer; font-weight: 500; background-color: var(--btn-bg); color: var(--btn-text);
-            user-select: none;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            background-color: var(--btn-bg);
+            color: var(--btn-text);
         }
 
         .btn-danger { background-color: #dc3545; color: white; }
@@ -67,19 +71,28 @@
         #file-input { display: none; }
 
         #upload-container {
-            flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
         }
 
         .upload-box {
-            border: 2px dashed var(--border-color); padding: 40px; border-radius: 12px;
-            text-align: center; background-color: var(--panel-bg); max-width: 450px; width: 90%;
+            border: 2px dashed var(--border-color);
+            padding: 40px;
+            border-radius: 12px;
+            text-align: center;
+            background-color: var(--panel-bg);
+            max-width: 450px;
+            width: 90%;
         }
 
         #loading-tip { display: none; color: var(--active-color); margin-top: 15px; font-weight: bold; }
 
-        #reader-container { flex: 1; display: none; overflow: hidden; position: relative; }
+        #reader-container { display: none; flex: 1; overflow: hidden; position: relative; }
 
-        /* H5端左侧悬浮章节按钮 */
         #m-toc-trigger {
             display: none; position: absolute; left: 0; top: 50%; transform: translateY(-50%); z-index: 90;
             padding: 12px 8px; background-color: var(--active-color); color: var(--btn-text);
@@ -87,7 +100,6 @@
             box-shadow: 2px 0 8px rgba(0,0,0,0.15); cursor: pointer;
         }
 
-        /* 左侧目录栏 */
         #sidebar {
             width: 280px; background-color: var(--panel-bg); border-right: 1px solid var(--border-color);
             overflow-y: auto; padding: 15px; z-index: 95; transition: transform 0.3s ease;
@@ -102,40 +114,30 @@
         .toc-item:hover { background-color: var(--border-color); }
         .toc-item.active { background-color: var(--active-color); color: var(--btn-text); }
 
-        /* 右侧内容区 */
         #content-area { flex: 1; display: flex; flex-direction: column; background-color: var(--bg-color); position: relative; }
         #viewer { flex: 1; padding: 40px; overflow-y: auto; display: flex; justify-content: center; }
         #book-content { max-width: 800px; width: 100%; line-height: 1.8; font-size: 1.1rem; white-space: pre-wrap; }
         
-        /* PDF 渲染画布 */
+        /* PDF 渲染特殊画布 */
         canvas { max-width: 100%; height: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); background: white; }
 
-        /* 移动端侧边栏遮罩层 */
         #sidebar-overlay {
             display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0,0,0,0.4); z-index: 94;
         }
 
-        /* 底部导航翻页与进度条 */
         .nav-bar {
             display: flex; justify-content: space-between; align-items: center; padding: 15px 30px;
             background-color: var(--panel-bg); border-top: 1px solid var(--border-color); z-index: 10;
         }
-        #page-display { font-weight: 500; font-size: 0.95rem; }
 
-        /* ================= H5 移动端强力适配样式 ================= */
         @media (max-width: 768px) {
             #m-toc-trigger { display: block; }
-            #sidebar {
-                position: absolute; top: 0; bottom: 0; left: 0; width: 260px;
-                transform: translateX(-100%); box-shadow: 4px 0 15px rgba(0,0,0,0.2);
-            }
+            #sidebar { position: absolute; top: 0; bottom: 0; left: 0; width: 260px; transform: translateX(-100%); box-shadow: 4px 0 15px rgba(0,0,0,0.2); }
             #reader-container.toc-open #sidebar { transform: translateX(0); }
             #reader-container.toc-open #sidebar-overlay { display: block; }
             #viewer { padding: 20px 20px 20px 35px; }
-            .nav-bar { padding: 12px 15px; }
-            #page-display { font-size: 0.85rem; }
-            button, .file-label { padding: 6px 12px; font-size: 0.9rem; }
+            .nav-bar { padding: 10px 15px; }
         }
     </style>
 </head>
@@ -181,6 +183,7 @@
     </div>
 
     <script>
+        // 配置 PDF.js worker
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
         let currentBook = null;
@@ -188,7 +191,7 @@
         let pdfDoc = null;
         let bookType = ''; 
         let txtChapters = []; 
-        let currentTxtIndex = 0; // 通用计数器（TXT/MOBI章节，PDF当前页码）
+        let currentTxtIndex = 0; // 同时也用于 PDF 当前页码
 
         window.onload = function() {
             initTheme();
@@ -228,7 +231,7 @@
             localStorage.setItem('theme', newTheme);
             updateThemeButton(newTheme);
             if (rendition && bookType === 'epub') setEpubTheme(newTheme);
-            if (bookType === 'pdf') renderPdfPage();
+            if (bookType === 'pdf') renderPdfPage(); // PDF 重新渲染以应用背景底色（如果需要）
         }
 
         function updateThemeButton(theme) {
@@ -257,7 +260,10 @@
                 bookType = ext;
                 reader.onload = function(e) {
                     let text = e.target.result;
-                    if (ext === 'mobi') text = decodeMobiText(e.target.result);
+                    if (ext === 'mobi') {
+                        // 纯前端提取 MOBI 中的原生文本流骨架
+                        text = decodeMobiText(e.target.result);
+                    }
                     try {
                         localStorage.setItem('local_book_data', text);
                         localStorage.setItem('local_book_name', file.name);
@@ -284,17 +290,24 @@
 
             } else if (ext === 'pdf') {
                 bookType = 'pdf';
-                reader.onload = function(e) { openPdf(e.target.result); showReaderView(); };
+                reader.onload = function(e) {
+                    openPdf(e.target.result);
+                    showReaderView();
+                };
                 reader.readAsArrayBuffer(file);
             }
         }
 
-        // ================= MOBI 解析核心 =================
+        // ================= MOBI 解析核心（提取文本流） =================
         function decodeMobiText(arrayBuffer) {
+            const view = new DataView(arrayBuffer);
+            // 简单读取 PalmDOC 文本压缩流或原始文本段
             let text = "";
             try {
                 const decoder = new TextDecoder('utf-8');
+                // 粗暴提取可读的 HTML/TEXT 字符串段
                 text = decoder.decode(new Uint8Array(arrayBuffer));
+                // 清理掉不可读的二进制非文本噪声
                 text = text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "").replace(/<[^>]+>/g, '\n');
             } catch(e) { text = "Mobi 文件解析失败或格式不兼容。"; }
             return text;
@@ -304,25 +317,16 @@
         function openPdf(arrayBuffer) {
             pdfjsLib.getDocument({ data: arrayBuffer }).promise.then(pdf => {
                 pdfDoc = pdf;
-                currentTxtIndex = 1; // PDF 页码从 1 开始
+                currentTxtIndex = 1; // PDF 页面从 1 开始
                 
+                // 自动生成 PDF 侧边栏页码目录
                 const tocContainer = document.getElementById('toc');
                 tocContainer.innerHTML = '';
-                
-                // 生成 PDF 可点击跳转的页码侧边栏
-                for (let i = 1; i <= pdf.numPages; i += Math.max(1, Math.floor(pdf.numPages / 60))) {
+                for (let i = 1; i <= pdf.numPages; i += Math.max(1, Math.floor(pdf.numPages / 50))) { // 最多显示50个快速跳转锚点
                     const li = document.createElement('li');
                     li.className = 'toc-item';
                     li.innerText = `第 ${i} 页`;
-                    
-                    // 绑定 H5 标准触控与点击事件，确保能触发跳转并收起
-                    li.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        currentTxtIndex = i;
-                        renderPdfPage();
-                        toggleMobileToc(false);
-                    });
-                    
+                    li.onclick = () => { currentTxtIndex = i; renderPdfPage(); toggleMobileToc(false); };
                     tocContainer.appendChild(li);
                 }
                 renderPdfPage();
@@ -333,21 +337,19 @@
             if (!pdfDoc) return;
             pdfDoc.getPage(currentTxtIndex).then(page => {
                 const container = document.getElementById('book-content');
-                container.innerHTML = ''; 
+                container.innerHTML = ''; // 清空上一页
                 
                 const canvas = document.createElement('canvas');
                 container.appendChild(canvas);
                 const context = canvas.getContext('2d');
 
+                // 动态适配浏览器缩放比例，保持高清
                 const viewport = page.getViewport({ scale: window.devicePixelRatio || 1.5 });
                 canvas.height = viewport.height;
                 canvas.width = viewport.width;
 
                 const renderContext = { canvasContext: context, viewport: viewport };
-                page.render(renderContext).promise.then(() => {
-                    // 同步高亮目录
-                    updateTocHighlight(currentTxtIndex - 1);
-                });
+                page.render(renderContext);
 
                 document.getElementById('page-display').innerText = `第 ${currentTxtIndex} / ${pdfDoc.numPages} 页`;
             });
@@ -378,14 +380,7 @@
                 const li = document.createElement('li');
                 li.className = `toc-item ${index === 0 ? 'active' : ''}`;
                 li.innerText = ch.title;
-                
-                // 使用标准事件监听器，避免 H5 穿透或失效
-                li.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    jumpToTxtChapter(index);
-                    toggleMobileToc(false);
-                });
-                
+                li.onclick = () => { jumpToTxtChapter(index); toggleMobileToc(false); };
                 tocContainer.appendChild(li);
             });
 
@@ -395,17 +390,18 @@
 
         function renderTxtChapter() {
             if(txtChapters.length === 0) return;
-            document.getElementById('book-content').innerText = txtChapters[currentTxtIndex].content;
+            document.getElementById('book-content').innerHTML = txtChapters[currentTxtIndex].content;
             document.getElementById('page-display').innerText = `第 ${currentTxtIndex + 1} / ${txtChapters.length} 章`;
             
-            updateTocHighlight(currentTxtIndex);
+            const items = document.querySelectorAll('.toc-item');
+            items.forEach((item, idx) => {
+                if(idx === currentTxtIndex) item.classList.add('active');
+                else item.classList.remove('active');
+            });
             document.getElementById('viewer').scrollTop = 0;
         }
 
-        function jumpToTxtChapter(index) {
-            currentTxtIndex = index;
-            renderTxtChapter();
-        }
+        function jumpToTxtChapter(index) { currentTxtIndex = index; renderTxtChapter(); }
 
         // ================= EPUB 解析核心 =================
         function openEpub(bookData) {
@@ -419,32 +415,20 @@
             currentBook.loaded.navigation.then(nav => {
                 const tocContainer = document.getElementById('toc');
                 tocContainer.innerHTML = '';
-                nav.forEach((chapter, index) => {
+                nav.forEach(chapter => {
                     const li = document.createElement('li');
-                    li.className = `toc-item ${index === 0 ? 'active' : ''}`;
+                    li.className = 'toc-item';
                     li.innerText = chapter.label.trim();
-                    
-                    // 为 H5 专门优化的点击事件
-                    li.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        rendition.display(chapter.href);
-                        toggleMobileToc(false); // 跳转后自动收起
-                    });
-                    
+                    li.onclick = () => { rendition.display(chapter.href); toggleMobileToc(false); };
                     tocContainer.appendChild(li);
                 });
             });
 
-            rendition.on("relocated", location => {
-                updateEpubProgress(location);
-                // 根据当前 cfi 手动处理目录高亮
-                if(location && location.start) {
-                    const packageNav = currentBook.navigation;
-                    const tocIndex = packageNav.toc.findIndex(t => rendition.currentLocation().start.href.includes(t.href));
-                    if(tocIndex !== -1) updateTocHighlight(tocIndex);
-                }
+            rendition.on("relocated", location => updateEpubProgress(location));
+            rendition.on("keydown", (event) => {
+                if (event.key === 'ArrowLeft') prevPage();
+                else if (event.key === 'ArrowRight') nextPage();
             });
-            
             setEpubTheme(document.documentElement.getAttribute('data-theme'));
         }
 
@@ -458,16 +442,7 @@
             }
         }
 
-        // 统一的高亮工具方法
-        function updateTocHighlight(activeIndex) {
-            const items = document.querySelectorAll('.toc-item');
-            items.forEach((item, idx) => {
-                if(idx === activeIndex) item.classList.add('active');
-                else item.classList.remove('active');
-            });
-        }
-
-        // ================= 统一路由翻页控制器 =================
+        // ================= 翻页路由控制 =================
         function prevPage() {
             if (bookType === 'txt' || bookType === 'mobi') {
                 if (currentTxtIndex > 0) { currentTxtIndex--; renderTxtChapter(); }
@@ -488,7 +463,7 @@
             }
         }
 
-        // 全局键盘监听（PC端保留）
+        // 全局键盘监听
         document.addEventListener('keydown', function(event) {
             if (document.getElementById('reader-container').style.display === 'flex') {
                 if (event.key === 'ArrowLeft') prevPage();
