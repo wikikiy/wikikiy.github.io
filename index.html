@@ -1,15 +1,11 @@
+我已经删除了首页的图片标签，并微调了上传卡片的内边距，使其在没有图片的情况下依然保持美观和居中。
+
+以下是修改后的完整代码：
+
+```html
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-4GJQ2X7EWV"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-
-      gtag('config', 'G-4GJQ2X7EWV');
-    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>书⁺</title>
@@ -52,7 +48,6 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
-            /* 核心修复：使用 JS 动态计算的 --vh 替代 100vh，防止移动端浏览器底部栏遮挡 */
             height: 100vh; 
             height: calc(var(--vh, 1vh) * 100);
             overflow: hidden;
@@ -72,7 +67,7 @@
         .upload-card {
             background: var(--card-bg);
             border-radius: 20px;
-            padding: 40px;
+            padding: 50px 40px; /* 微调内边距，弥补图片删除后的空白 */
             box-shadow: var(--shadow);
             text-align: center;
             max-width: 450px;
@@ -80,8 +75,7 @@
             transition: background 0.3s;
         }
 
-        .upload-icon { width: 100px; height: 100px; object-fit: contain; margin-bottom: 20px; border-radius: 12px; }
-        .upload-card h2 { font-size: 24px; margin-bottom: 10px; color: var(--text-color); }
+        .upload-card h2 { font-size: 28px; margin-bottom: 12px; color: var(--text-color); letter-spacing: 1px; }
         .upload-card p { color: var(--secondary-text); margin-bottom: 30px; font-size: 14px; }
 
         .upload-btn {
@@ -95,7 +89,7 @@
             font-weight: 500;
             transition: background 0.2s, transform 0.1s;
             box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
-            touch-action: manipulation; /* 优化移动端点击响应 */
+            touch-action: manipulation;
         }
         .upload-btn:hover { background: var(--primary-hover); }
         .upload-btn:active { transform: scale(0.98); }
@@ -123,7 +117,7 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.02);
             z-index: 10;
             transition: background 0.3s;
-            flex-shrink: 0; /* 防止被压缩 */
+            flex-shrink: 0;
         }
 
         .top-bar h1 {
@@ -162,7 +156,7 @@
             display: flex; 
             overflow: hidden; 
             position: relative; 
-            min-height: 0; /* 核心修复：防止 flex 子元素撑开父容器导致底部按钮被挤出 */
+            min-height: 0;
         }
 
         .sidebar {
@@ -203,7 +197,7 @@
         #epub-viewer { 
             width: 100%; 
             height: 100%; 
-            overflow: hidden; /* 防止 iframe 出现滚动条 */
+            overflow: hidden;
         }
 
         #txt-viewer { width: 100%; height: 100%; overflow: hidden; position: relative; }
@@ -237,10 +231,9 @@
             align-items: center;
             justify-content: space-between;
             padding: 0 30px;
-            /* 核心修复：适配 iPhone 底部安全区（黑条），防止按钮被遮挡 */
             padding-bottom: env(safe-area-inset-bottom); 
             transition: background 0.3s;
-            flex-shrink: 0; /* 防止被压缩 */
+            flex-shrink: 0;
         }
 
         .nav-btn {
@@ -254,7 +247,7 @@
             cursor: pointer;
             transition: background 0.2s, transform 0.1s, opacity 0.2s;
             box-shadow: 0 4px 15px rgba(52, 152, 219, 0.2);
-            touch-action: manipulation; /* 优化移动端点击响应 */
+            touch-action: manipulation;
         }
         .nav-btn:hover { background: var(--primary-hover); }
         .nav-btn:active { transform: scale(0.96); }
@@ -290,11 +283,11 @@
 <body>
     <div id="home-view" class="view active">
         <div class="upload-card">
-            <!--img src="https://bailian-bmp-pre.oss-cn-hangzhou.aliyuncs.com/public/system_agent/PlaceHolder.png" alt="book" class="upload-icon"-->
-            <h2>书<sup>+</sup></h2>
-            <p>沉浸式阅读体验</p>
+            <h2>书⁺</h2>
+            <p>沉浸式阅读体验，支持 EPUB、TXT、PDF 格式</p>
             <label for="file-input" class="upload-btn">选择电子书</label>
             <input type="file" id="file-input" accept=".epub,.txt,.pdf" hidden>
+            <div id="drop-zone">或将文件拖拽到此处</div>
         </div>
     </div>
 
@@ -336,7 +329,6 @@
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-        // 核心修复：动态计算真实视口高度，解决移动端浏览器 100vh 被底部导航栏遮挡的问题
         function setViewportHeight() {
             let vh = window.innerHeight * 0.01;
             document.documentElement.style.setProperty('--vh', `${vh}px`);
@@ -400,7 +392,6 @@
             document.addEventListener('keydown', handleKeyDown);
             window.addEventListener('resize', handleResize);
 
-            // 为 TXT 和 PDF 绑定触摸事件（EPUB 的触摸事件在 iframe 内部，需单独处理）
             const contentArea = document.querySelector('.content-area');
             contentArea.addEventListener('touchstart', (e) => {
                 touchStartX = e.changedTouches[0].screenX;
@@ -530,7 +521,6 @@
                     });
                     state.rendition.themes.select(state.isDarkMode ? "dark" : "light");
                     
-                    // 核心修复：为 EPUB 的 iframe 内部注入触摸滑动事件
                     state.rendition.hooks.content.register(function(contents) {
                         if (contents && contents.document) {
                             contents.document.addEventListener('touchstart', (e) => {
@@ -548,7 +538,6 @@
                         showLoading(false);
                         requestAnimationFrame(() => {
                             state.rendition.display().then(() => {
-                                // 核心修复：渲染后强制重新计算尺寸，防止内容显示不全
                                 state.rendition.resize(); 
                             }).catch(err => console.error("Display error:", err));
                         });
@@ -821,7 +810,7 @@
         }
 
         function handleResize() {
-            setViewportHeight(); // 窗口变化时重新计算高度
+            setViewportHeight();
             if (!els.readerView.classList.contains('active')) return;
             
             if (state.currentType === 'txt') {
@@ -831,7 +820,6 @@
             } else if (state.currentType === 'pdf') {
                 renderPdfPage(state.pdfCurrentPage);
             } else if (state.currentType === 'epub' && state.rendition) {
-                // 核心修复：窗口缩放时强制 EPUB 重新计算尺寸
                 state.rendition.resize(); 
             }
         }
