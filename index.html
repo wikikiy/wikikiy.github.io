@@ -1,10 +1,20 @@
-
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>书⁺</title>
+
+    <!-- Google tag (gtag.js) - 请替换 G-XXXXXXXXXX 为您的真实 ID -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-4GJQ2X7EWV');
+    </script>
+
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -63,7 +73,7 @@
         .upload-card {
             background: var(--card-bg);
             border-radius: 20px;
-            padding: 50px 40px; /* 微调内边距，弥补图片删除后的空白 */
+            padding: 50px 40px;
             box-shadow: var(--shadow);
             text-align: center;
             max-width: 450px;
