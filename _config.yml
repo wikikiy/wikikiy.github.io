@@ -3,8 +3,8 @@
 
 title: 袋书
 description: 袋书是一款免费的在线电子书阅读器，支持EPUB、TXT等主流格式，提供舒适的阅读体验。
-baseurl: "wikikiy.github.io"
-url: "wikikiy.github.io"
+baseurl: ""
+url: ""
 
 # Build settings
 markdown: kramdown
