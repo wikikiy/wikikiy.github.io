@@ -1,0 +1,23 @@
+---
+layout: null
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>袋书 - 免费在线电子书阅读器</title>
+    <description>袋书是一款免费的在线电子书阅读器，支持EPUB、TXT等主流格式，提供舒适的阅读体验。</description>
+    <link>{{ site.url }}{{ site.baseurl }}/</link>
+    <atom:link href="{{ site.url }}{{ site.baseurl }}/feed.xml" rel="self" type="application/rss+xml"/>
+    <pubDate>{{ site.time | date_to_rfc822 }}</pubDate>
+    <lastBuildDate>{{ site.time | date_to_rfc822 }}</lastBuildDate>
+    <generator>Jekyll</generator>
+    <language>zh-CN</language>
+    <item>
+      <title>袋书 - 在线电子书阅读器</title>
+      <description>袋书是一款免费的在线电子书阅读器，支持EPUB、TXT等主流电子书格式。提供舒适的阅读体验，支持深色模式、听书功能，无需下载即可在线阅读。</description>
+      <link>{{ site.url }}{{ site.baseurl }}/</link>
+      <guid isPermaLink="true">{{ site.url }}{{ site.baseurl }}/</guid>
+      <pubDate>{{ site.time | date_to_rfc822 }}</pubDate>
+    </item>
+  </channel>
+</rss>
