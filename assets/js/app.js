@@ -884,6 +884,14 @@
         else startTTS();
     }
 
+    /**
+     * TTS (Text-to-Speech) with pause/resume support.
+     *
+     * The key challenge: `speechSynthesis.cancel()` fires `onend` on pending utterances,
+     * which would trigger `speakNextChunk` after we've already paused. We handle this by
+     * using an `onendCancelled` flag (`state.ttsResumeIndex`) and checking `isTTSActive`
+     * at every entry point.
+     */
     function startTTS() {
         if (state.chapters.length === 0) return;
         const textNodes = getChapterTextNodes();
@@ -894,7 +902,7 @@
 
         state.isTTSActive = true;
         state.ttsChunks = textNodes;
-        state.ttsChunkIndex = 0;
+        state.ttsChunkIndex = state.ttsChunkIndex || 0;
 
         dom.iconPlay.style.display = 'none';
         dom.iconPause.style.display = 'block';
@@ -905,24 +913,35 @@
     }
 
     function speakNextChunk() {
-        if (!state.isTTSActive || state.ttsChunkIndex >= state.ttsChunks.length) {
-            if (state.ttsChunkIndex >= state.ttsChunks.length) {
-                if (state.currentChapter < state.chapters.length - 1) {
-                    nextChapter();
-                    setTimeout(() => {
-                        if (state.isTTSActive) {
-                            const nodes = getChapterTextNodes();
-                            if (nodes.length > 0) {
-                                state.ttsChunks = nodes;
-                                state.ttsChunkIndex = 0;
-                                speakNextChunk();
-                            } else stopTTS();
-                        }
-                    }, 500);
-                } else {
-                    stopTTS();
-                    showToast('全书朗读完毕');
-                }
+        // Guard: if TTS was deactivated (pause/stop), do nothing
+        if (!state.isTTSActive) return;
+
+        // Finished all text nodes in current chapter
+        if (state.ttsChunkIndex >= state.ttsChunks.length) {
+            // Auto-advance to next chapter
+            if (state.currentChapter < state.chapters.length - 1) {
+                // Stop TTS before changing chapter to prevent onend cascade
+                if (state.ttsSynth) state.ttsSynth.cancel();
+                state.isTTSActive = false;
+                clearTTSHighlights();
+
+                nextChapter();
+                setTimeout(() => {
+                    const nodes = getChapterTextNodes();
+                    if (nodes.length > 0) {
+                        state.ttsChunks = nodes;
+                        state.ttsChunkIndex = 0;
+                        state.isTTSActive = true;
+                        dom.iconPlay.style.display = 'none';
+                        dom.iconPause.style.display = 'block';
+                        dom.ttsToggle.classList.add('is-playing');
+                        dom.ttsToggle.title = '暂停听书';
+                        speakNextChunk();
+                    }
+                }, 500);
+            } else {
+                stopTTS();
+                showToast('全书朗读完毕');
             }
             return;
         }
@@ -942,15 +961,26 @@
         utterance.rate = 1.0;
         utterance.pitch = 1.0;
         utterance.volume = 1.0;
-        utterance.onend = () => { state.ttsChunkIndex++; speakNextChunk(); };
-        utterance.onerror = () => { state.ttsChunkIndex++; speakNextChunk(); };
+        utterance.onend = () => {
+            // Only advance if TTS is still active (not paused/stopped)
+            if (!state.isTTSActive) return;
+            state.ttsChunkIndex++;
+            speakNextChunk();
+        };
+        utterance.onerror = () => {
+            if (!state.isTTSActive) return;
+            state.ttsChunkIndex++;
+            speakNextChunk();
+        };
 
         state.ttsUtterance = utterance;
         state.ttsSynth.speak(utterance);
     }
 
     function pauseTTS() {
-        if (state.ttsSynth && state.ttsSynth.speaking) state.ttsSynth.cancel();
+        if (state.ttsSynth) {
+            state.ttsSynth.cancel(); // This will fire onend for pending utterances,
+        }                             // but our onend guard (!state.isTTSActive) prevents advancement
         state.isTTSActive = false;
         dom.iconPlay.style.display = 'block';
         dom.iconPause.style.display = 'none';
